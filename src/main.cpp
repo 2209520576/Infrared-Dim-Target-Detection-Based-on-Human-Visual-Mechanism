@@ -8,7 +8,6 @@
 #include "core_func.h"
 #include "FastConerDetector.h"
 #include "MultiGray_Measure.h"
-#include "Compar_NBC.h"
 
 enum method{ Fart , SoftFart };
 
@@ -29,161 +28,18 @@ int trainMain(method tm){
 	int Thd = 0.58;
 
 	if (tm == Fart){
-		ImprovedFart.FART_train(ImprovedFart, feature_map, maxepoch, 0);//Similary_method:0 ¡ª¡ª 1,1 ¡ª¡ª Jaccard coefficient,2 ¡ª¡ª  Cosine similarity
+		ImprovedFart.FART_train(ImprovedFart, feature_map, maxepoch, 0);//Similary_method:0 â€”â€” 1,1 â€”â€” Jaccard coefficient,2 â€”â€”  Cosine similarity
 		cv::Mat Model = ImprovedFart.getWeight();
 		WriteMatToFile(Model, "FART_Model", "FART_Model.xml");
 	}
 	else if (tm == SoftFart){
-		ImprovedFart.SoftFART_train(ImprovedFart, feature_map, maxepoch, Thd, 2);//Similary_method:0 ¡ª¡ª 1,1 ¡ª¡ª Jaccard coefficient,2 ¡ª¡ª  Cosine similarity
+		ImprovedFart.SoftFART_train(ImprovedFart, feature_map, maxepoch, Thd, 2);//Similary_method:0 â€”â€” 1,1 â€”â€” Jaccard coefficient,2 â€”â€”  Cosine similarity
 		cv::Mat Model = ImprovedFart.getWeight();
 		WriteMatToFile(Model, "SoftFART_Model", "SoftFART_Model.xml");
 	}
 	return 0;
 }
 
-int compareNBC(){
-
-	std::string in_rootfile = "I:\\Dim_target_Data\\";
-	std::string out_rootfile = "I:\\FuzzzyART_experiment\\";
-	std::string backgroug_type_file = "complex_cloud\\";
-	std::string xml_rootfile = in_rootfile + "test_ROI_lable\\" + backgroug_type_file;
-	std::string result_target_rootfile = out_rootfile + "testData_result_target\\" + backgroug_type_file;
-	std::string result_background_rootfile = out_rootfile + "testData_result_background\\" + backgroug_type_file;
-	std::ofstream Nodetected(result_target_rootfile + "Nodetected.txt", std::ofstream::out);//´´½¨txtÎÄ¼þ²¢´ò¿ª£¬ÓÃÓÚ±£´æÃ»ÓÐ¼ì²âµ½ROIµÄÍ¼ÏñÃû³Æ
-	int Ptrue_rtrue = 0, Ptrue_rfalse = 0, Pfalse_rtrue = 0;
-
-	FastConerDetector FastPoint;
-	FastPoint.setTH(30);
-	FastPoint.set_detect_type(1);
-	FastPoint.set_diameter(70);
-	FastPoint.set_Size(5);
-
-	//NBC_Trian
-	Compar_NBC CNBC;
-	std::string Tgt_Root_Path = "I:\\Dim_target_Data\\train_ROI_data\\Train_targetROI_total_data1\\";
-	std::string Bkg_Root_Path = "I:\\Dim_target_Data\\train_background_data\\Train_backgroungROI_total_data\\";
-	cv::Mat feature_map, labelsMat;
-	CNBC.getTriandata(Tgt_Root_Path, Bkg_Root_Path, 10, 10, feature_map, labelsMat, false);
-	CNBC.trian(feature_map, labelsMat);
-
-	double time, ave_time = 0.0;
-	int cout = 0;
-	for (int n = 1; n <= 1001; ++n){
-		std::string img_infile = in_rootfile + "test_data\\" + backgroug_type_file + std::to_string(n) + ".bmp";
-		std::string img_outfile = out_rootfile + "draw_result\\" + backgroug_type_file + std::to_string(n) + ".bmp";
-		std::string result_outfile = out_rootfile + "final_result\\" + backgroug_type_file + std::to_string(n) + ".bmp";
-		std::string MGVM_outfile = out_rootfile + "MGVM_result\\" + backgroug_type_file + std::to_string(n) + ".bmp";
-
-		std::string xml_infile = xml_rootfile + std::to_string(n) + ".xml";
-		std::string result_target_outfile = result_target_rootfile + std::to_string(n) + "_";
-		std::string result_background_outfile = result_background_rootfile + std::to_string(n) + "_";
-		cv::Mat src = cv::imread(img_infile);
-
-		if (src.empty()){
-			continue;
-		}
-
-		if (src.channels() > 1)
-			cvtColor(src, src, CV_RGB2GRAY);
-		cv::Mat dst = cv::Mat::zeros(src.rows, src.cols, CV_64F);
-		cv::Mat optimalSize_map;
-
-		double t2 = (double)cv::getTickCount();
-
-		//Computation of Multi-gray scale measure
-		MultiGray_Measure multigay_measure;
-		multigay_measure.Multi_grayscale(src, dst);
-		optimalSize_map = multigay_measure.getoptimalSize_map();
-
-		//FAST Coner Detection
-		std::vector<cv::KeyPoint> KP; KP.reserve(100);
-		FastPoint.set_nms(false);
-		FastPoint.set_detect_type(1);
-		FastPoint.Fast(dst, KP);
-		FastPoint.NMS(src, KP);
-
-		//NBC_Test
-		std::cout << "--------------------------------------" << std::endl;
-		if (KP.size() > 1)
-			CNBC.match(src, optimalSize_map, KP, 21, 21);
-
-		//Suppress background and Enhance target
-		cv::Mat result = Supb_Enht(dst, KP, 21, 21);
-
-		t2 = (double)cv::getTickCount() - t2;
-		time = (1000 * t2) / ((double)cv::getTickFrequency());
-		std::cout << n << "th Image: " << "Process time=" << time << " ms. " << std::endl;
-		ave_time += time;
-		++cout;
-
-		//ROI extract  and Count nums
-		int ptnum = KP.size();
-		bool hasxml = true;
-		std::ifstream in(xml_infile);
-		if (!in.is_open()){  //ÎÞxmlÎÄ¼þ
-			hasxml = false;
-			if (Nodetected.is_open()){
-				Nodetected << n << ".bmp" << "----->(No .xml file!)" << std::endl;
-			}
-		}
-
-		if (ptnum == 0){ //Ã»ÓÐÒ»¸öROI±»¼ì²âµ½
-			if (hasxml) ++Pfalse_rtrue;
-			if (Nodetected.is_open()){
-				Nodetected << n << ".bmp" << "----->(NO KeyPoint detected!)" << std::endl;
-			}
-		}
-
-		bool tag = false;
-		bool save = false;
-		if (hasxml) ROI_extract(src, xml_infile, result_target_outfile, result_background_outfile, KP, 21, 21, tag, save, Ptrue_rtrue, Ptrue_rfalse);
-
-		if (ptnum>0 && tag == false){   //ÓÐ±³¾°±»¼ì²â£¬µ«Ä¿±êÇøÓòÎ´±»¼ì²âµ½
-			if (hasxml) ++Pfalse_rtrue;
-			if (Nodetected.is_open()){
-				Nodetected << n << ".bmp" << "----->(Target Not detected but have backgroud detected!)" << std::endl;
-			}
-		}
-
-		//Draw rectangular boxes
-		drawrec(src, 10, KP);
-		drawrec(dst, 10, KP);
-
-		//show
-		cv::namedWindow("dst", CV_WINDOW_NORMAL);
-		cv::imshow("dst", dst);
-		cv::namedWindow("result", CV_WINDOW_NORMAL);
-		cv::imshow("result", result);
-		cv::namedWindow("src", CV_WINDOW_NORMAL);
-		cv::imshow("src", src);
-		cv::waitKey(1);
-
-		std::cout << "Ptnum=" << ptnum << std::endl;
-		std::cout << n << "th img " << "end of processing£¡" << std::endl;
-
-		//Save
-		//cv::imwrite(img_outfile, src);
-		//cv::imwrite(MGVM_outfile, dst);
-		//cv::imwrite(result_outfile, result);
-
-	}
-	Nodetected.close();
-	double Precision = double(Ptrue_rtrue) / (Ptrue_rtrue + Ptrue_rfalse);
-	double Call = double(Ptrue_rtrue) / (Ptrue_rtrue + Pfalse_rtrue);
-	double F1_index = 2 * Precision*Call / (Precision + Call);
-	std::cout << std::endl << "Total_rtrue_num£º" << Ptrue_rtrue + Pfalse_rtrue;
-	std::cout << std::endl << "Total_Ptrue_num£º" << Ptrue_rtrue + Ptrue_rfalse << std::endl;
-	std::cout << "Ptrue_rtrue£º" << Ptrue_rtrue << std::endl;   //predict(p),real(r)
-	std::cout << "Ptrue_rfalse£º" << Ptrue_rfalse << std::endl;
-	std::cout << "Pfalse_rtrue£º" << Pfalse_rtrue << std::endl << std::endl;
-	std::cout << "Precision £º" << Precision * 100 << "%" << std::endl;
-	std::cout << "Call£º" << Call * 100 << "%" << std::endl;
-	std::cout << "F1_index£º" << F1_index << std::endl;
-	std::cout << "Ave_time£º" << ave_time / cout << " ms" << std::endl;
-
-	cv::waitKey(0);
-	return 0;
-}
 
 
 int testMain(method tm){
@@ -194,7 +50,7 @@ int testMain(method tm){
 	std::string xml_rootfile = in_rootfile + "test_ROI_lable\\" + backgroug_type_file;
 	std::string result_target_rootfile = out_rootfile + "testData_result_target\\" + backgroug_type_file;
 	std::string result_background_rootfile = out_rootfile + "testData_result_background\\" + backgroug_type_file;
-	std::ofstream Nodetected(result_target_rootfile + "Nodetected.txt", std::ofstream::out);//´´½¨txtÎÄ¼þ²¢´ò¿ª£¬ÓÃÓÚ±£´æÃ»ÓÐ¼ì²âµ½ROIµÄÍ¼ÏñÃû³Æ
+	std::ofstream Nodetected(result_target_rootfile + "Nodetected.txt", std::ofstream::out);//åˆ›å»ºtxtæ–‡ä»¶å¹¶æ‰“å¼€ï¼Œç”¨äºŽä¿å­˜æ²¡æœ‰æ£€æµ‹åˆ°ROIçš„å›¾åƒåç§°
 	int Ptrue_rtrue = 0, Ptrue_rfalse = 0, Pfalse_rtrue = 0;
 
 	FastConerDetector FastPoint;
@@ -263,14 +119,14 @@ int testMain(method tm){
 		int ptnum = KP.size();
 		bool hasxml = true;
 		std::ifstream in(xml_infile);
-		if (!in.is_open()){  //ÎÞxmlÎÄ¼þ
+		if (!in.is_open()){  //æ— xmlæ–‡ä»¶
 			hasxml = false;
 			if (Nodetected.is_open()){
 				Nodetected << n << ".bmp" << "----->(No .xml file!)" << std::endl;
 			}
 		}
 
-		if (ptnum == 0){ //Ã»ÓÐÒ»¸öROI±»¼ì²âµ½
+		if (ptnum == 0){ //æ²¡æœ‰ä¸€ä¸ªROIè¢«æ£€æµ‹åˆ°
 			if (hasxml) ++Pfalse_rtrue;
 			if (Nodetected.is_open()){
 				Nodetected << n << ".bmp" << "----->(NO KeyPoint detected!)" << std::endl;
@@ -281,7 +137,7 @@ int testMain(method tm){
 		bool save = false;
 		if (hasxml) ROI_extract(src, xml_infile, result_target_outfile, result_background_outfile, KP, 21, 21, tag, save, Ptrue_rtrue, Ptrue_rfalse);
 
-		if (ptnum>0 && tag == false){   //ÓÐ±³¾°±»¼ì²â£¬µ«Ä¿±êÇøÓòÎ´±»¼ì²âµ½
+		if (ptnum>0 && tag == false){   //æœ‰èƒŒæ™¯è¢«æ£€æµ‹ï¼Œä½†ç›®æ ‡åŒºåŸŸæœªè¢«æ£€æµ‹åˆ°
 			if (hasxml) ++Pfalse_rtrue;
 			if (Nodetected.is_open()){
 				Nodetected << n << ".bmp" << "----->(Target Not detected but have backgroud detected!)" << std::endl;
@@ -302,7 +158,7 @@ int testMain(method tm){
 		cv::waitKey(1);
 
 		std::cout << "Ptnum=" << ptnum << std::endl;
-		std::cout << n << "th img " << "end of processing£¡" << std::endl;
+		std::cout << n << "th img " << "end of processingï¼" << std::endl;
 
 		//Save
 		//cv::imwrite(img_outfile, src);
@@ -314,15 +170,15 @@ int testMain(method tm){
 	double Precision = double(Ptrue_rtrue) / (Ptrue_rtrue + Ptrue_rfalse);
 	double Call = double(Ptrue_rtrue) / (Ptrue_rtrue + Pfalse_rtrue);
 	double F1_index = 2 * Precision*Call / (Precision + Call);
-	std::cout << std::endl << "Total_rtrue_num£º" << Ptrue_rtrue + Pfalse_rtrue;
-	std::cout << std::endl << "Total_Ptrue_num£º" << Ptrue_rtrue + Ptrue_rfalse << std::endl;
-	std::cout << "Ptrue_rtrue£º" << Ptrue_rtrue << std::endl;   //predict(p),real(r)
-	std::cout << "Ptrue_rfalse£º" << Ptrue_rfalse << std::endl;
-	std::cout << "Pfalse_rtrue£º" << Pfalse_rtrue << std::endl << std::endl;
-	std::cout << "Precision £º" << Precision * 100 << "%" << std::endl;
-	std::cout << "Call£º" << Call * 100 << "%" << std::endl;
-	std::cout << "F1_index£º" << F1_index << std::endl;
-	std::cout << "Ave_time£º" << ave_time / cout << " ms" << std::endl;
+	std::cout << std::endl << "Total_rtrue_numï¼š" << Ptrue_rtrue + Pfalse_rtrue;
+	std::cout << std::endl << "Total_Ptrue_numï¼š" << Ptrue_rtrue + Ptrue_rfalse << std::endl;
+	std::cout << "Ptrue_rtrueï¼š" << Ptrue_rtrue << std::endl;   //predict(p),real(r)
+	std::cout << "Ptrue_rfalseï¼š" << Ptrue_rfalse << std::endl;
+	std::cout << "Pfalse_rtrueï¼š" << Pfalse_rtrue << std::endl << std::endl;
+	std::cout << "Precision ï¼š" << Precision * 100 << "%" << std::endl;
+	std::cout << "Callï¼š" << Call * 100 << "%" << std::endl;
+	std::cout << "F1_indexï¼š" << F1_index << std::endl;
+	std::cout << "Ave_timeï¼š" << ave_time / cout << " ms" << std::endl;
 
 	cv::waitKey(0);
 	return 0;
@@ -330,11 +186,6 @@ int testMain(method tm){
 
 
 int main(){
-	//if (!VATInitialize()) // ³õÊ¼»¯VAT
-	//{
-	//	std::cout << "Could not initialize VAT!" << std::endl;
-	//	exit(0);
-	//}
 
 	method tm =SoftFart;
 	testMain(tm);
