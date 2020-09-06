@@ -1,0 +1,26 @@
+<annotation>
+	<folder>architecture</folder>
+	<filename>64.bmp</filename>
+	<path>I:\Dim_target_Data\test_data\architecture\64.bmp</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>480</width>
+		<height>359</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>dim target</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>387</xmin>
+			<ymin>220</ymin>
+			<xmax>419</xmax>
+			<ymax>243</ymax>
+		</bndbox>
+	</object>
+</annotation>
