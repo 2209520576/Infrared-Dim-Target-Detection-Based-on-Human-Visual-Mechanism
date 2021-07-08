@@ -1,17 +1,13 @@
-# 《光子学报》——基于视觉注意机制的红外弱小目标检测
+# 基于视觉注意机制的红外弱小目标检测
 # Infrared-Dim-Target-Detection-Based-on-Human-Visual-Mechanism
-## 作者：危水根，王程伟， 陈震，张聪炫，张晓雨
 
-### 若有疑问交流,请联系邮箱：wcw_cg@163.com.
+### 若有疑问交流,可联系：wcw_cg@163.com.
 
 ### 若使用该项目的数据（图片），请注明出处，谢谢！    
+### 数据链接： https://gas.graviti.cn/dataset/xiaowu/MSIDT      
        
-               
-                        
-                        
-
-         
-         
+        
+        
 ### 1.环境配置     
 
 ### win+vs2013+opencv3.1.0+Matlab(2010以上版本)
