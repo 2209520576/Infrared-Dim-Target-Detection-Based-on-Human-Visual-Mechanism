@@ -4,7 +4,7 @@
 ### 若有疑问交流,可联系：wcw_cg@163.com.
 
 ### 若使用该项目的数据（图片），请注明出处，谢谢！    
-### 数据链接：https://gas.graviti.cn/dataset/datawhale/MSIDT  
+### 数据链接：https://gas.graviti.cn/dataset/datawhale/MSIDT  或 关注公众号【OpenImage】获取。
        
         
         
